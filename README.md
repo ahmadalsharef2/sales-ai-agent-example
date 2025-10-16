@@ -12,7 +12,7 @@ The Sales Agent should be able to:
 - Detect customer interest and guide the conversation.
 - Collect customer details (name, email, phone number) when interest is confirmed.
 - Create a **Lead** in the internal CRM system.
-- Schedule an **Appointment** with a real sales (dummy) consultant.
+- Schedule an **Appointment** with a real sales (dummy) consultant. (OPTIONAL)
 
 This challenge focuses on **automation, data-driven logic, and AI techniques** to simulate a realistic sales workflow.
 
