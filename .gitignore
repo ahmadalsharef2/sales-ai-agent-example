@@ -30,4 +30,4 @@ data/crm_leads.json
 Thumbs.db
 
 
-cleanup.py
+cleanup.sh
