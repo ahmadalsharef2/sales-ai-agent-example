@@ -58,7 +58,6 @@ The implementation should emphasize:
 - Expose the Sales Agent as an API (REST or WebSocket).
 - Accept customer messages and return agent responses.
 - Maintain a simple **multi-turn conversation** (context awareness).
--
 
 ### 3.2 Product Recommendations
 - Use the provided product catalog [bikes](data/product_catalog.json)
