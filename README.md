@@ -103,7 +103,7 @@ The implementation should emphasize:
 
 - **Language**: Python
 - **API**: REST or WebSocket
-- **Data**: Use only `/data/bike_shop.json`
+- **Data**: Use only `/data/product_catalog.json`
 - **AI**:
     - Visible **prompt engineering**
     - Apply **RAG** for product recommendations
