@@ -80,23 +80,26 @@ I thought it like
 
 input - llm - RAG - output
 
-Modules
-conversation, llm, data
+Modules: conversation, llm, data
 
-best practices:
-fastapi examples on github
-
+best practices: fastapi examples on github
 
 Made trade-offs for small-scale requirements
+
 Focused on clean architecture with minimal complexity
+
 Services pattern with clear separation of concerns
 
 Let the LLM handle intent detection rather than rule-based logic
+
 System prompt includes clear instructions for lead collection
+
 Single conversation flow rather than complex state machines
 
 Containerized for reproducibility (FastAPI + Ollama)
+
 Persisted models in Docker volume (avoids re-downloads)
+
 Testing: Both automated (pytest) and manual (Streamlit UI)
 
 
@@ -131,9 +134,13 @@ Note: RAG source faq or product, general or product question
 
 
 Separation of Concerns: Routes → Services → Data (clear flow)
+
 Testable: Easy to test services independently
+
 Scalable: Add new features without touching existing code
+
 FastAPI Convention: Most FastAPI projects follow this
+
 Clean Dependencies: Routes call services, services call data/external APIs
 
 
@@ -145,7 +152,9 @@ app.py  # Everything in one file (OK for tiny apps)
 Pros of pip freeze:
 
 Captures exact versions of ALL dependencies (including sub-dependencies)
+
 Reproducible builds
+
 Cons of pip freeze:
 
 ❌ Messy: 50+ packages (including sub-dependencies we don't care about)
@@ -171,33 +180,44 @@ conversation_service.py (business logic)
   ↓
 Return ChatResponse to user
 ```
-source venv/bin/activate && streamlit run chat_ui.py --server.headless=true
 
 
 ## Concerns on Production 
 Ports hardcoded
-Datapaths hardcoded
-CORS open to all
-for production ROGUE or BELU
-monitor performance -> mlflow
 
-no conversations state in memory or DB
-no thread-safe
-process message function is long
-do i need step-by-setp prompting? for CRM lead?
-crm_lead data in gitignore for gdpr policy
-average latency is 7 seconds (including tiem to write response, except first query). Can be done into 5 or less.
+Datapaths hardcoded
+
+CORS open to all
+
+for production ROGUE or BELU
+
+Improved performance monitoring -> mlflow
+
+no conversations state in memory or DB. Database persistence instead of in-memory storage
+
 Thread safety for conversation state
-Database persistence instead of in-memory storage
-Improved performance monitoring
+
+process message function is long
+
+do i need step-by-setp prompting? for CRM lead?
+
+crm_lead data in gitignore for gdpr policy
+
+average latency is 7 seconds (including tiem to write response, except first query). Can be done into 5 or less.
+
+
 Appointment scheduling feature
 
 
-
 # First time setup
+```bash
 mkdir -p data
 touch data/crm_leads.json
 echo '{"leads":[],"appointments":[]}' > data/crm_leads.json
+```
+ Then start services
 
-# Then start services
 docker-compose up -d
+
+For GUI:
+source venv/bin/activate && streamlit run chat_ui.py --server.headless=true
