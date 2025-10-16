@@ -1,0 +1,48 @@
+# Docker Compose version - defines the schema version
+version: '3.8'
+
+services:
+  # ============================================================================
+  # OLLAMA SERVICE - Local LLM Server (Optional - only if using local LLM)
+  # ============================================================================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: sales-agent-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ============================================================================
+  # FASTAPI APPLICATION - Sales Agent API
+  # ============================================================================
+  app:
+    build: .
+    container_name: sales-agent-api
+    ports:
+      - "8000:8000"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - LLM_PROVIDER=${LLM_PROVIDER:-ollama}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2:1b}
+    env_file:
+      - .env
+    volumes:
+      - ./app:/app/app
+      - ./data:/app/data
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: unless-stopped
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+# Only needed if using Ollama - stores downloaded models
+volumes:
+  ollama_data:
