@@ -68,6 +68,9 @@ class ConversationManager:
         
         # Add user message to history
         conv["messages"].append({"role": "user", "content": message})
+        # Keep only the latest 5 messages
+        if len(conv["messages"]) > 5:
+            conv["messages"] = conv["messages"][-5:]
         
         # Try to extract lead info from every message (non-intrusive)
         self._extract_lead_info(conv, message)
@@ -97,10 +100,12 @@ class ConversationManager:
         # Build single prompt with all context
         full_context = "\n\n".join(context_parts) if context_parts else ""
         
-        messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": f"{full_context}\n\nCustomer: {message}"}
-        ]
+        # Use only the latest 5 messages for LLM context
+        history = conv["messages"][-5:]
+        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        if full_context:
+            messages.append({"role": "user", "content": f"{full_context}\n\nCustomer: {message}"})
+        messages.extend(history)
         
         # Get LLM response
         response = llm_service.chat(messages, temperature=0.7)

@@ -2,6 +2,8 @@
 import json
 from typing import List, Dict, Any
 from pathlib import Path
+import spacy
+import numpy as np
 
 
 class DataService:
@@ -23,15 +25,28 @@ class DataService:
         self.faq_path = Path(faq_path)
         self.catalog: List[Dict[str, Any]] = []
         self.faq_text: str = ""
+        try:
+            self.nlp = spacy.load("en_core_web_md")
+        except OSError:
+            import subprocess, sys
+            subprocess.run([sys.executable, "-m", "spacy", "download", "en_core_web_md"], check=True)
+            self.nlp = spacy.load("en_core_web_md")
+        self.bike_vectors = None
         self._load_data()
     
     def _load_data(self):
-        """Load product catalog and FAQ from files"""
+        """Load product catalog and FAQ from files, and embed bikes with spaCy"""
         # Load product catalog
         if self.catalog_path.exists():
             with open(self.catalog_path, 'r', encoding='utf-8') as f:
                 self.catalog = json.load(f)
-        
+        # Embed bikes with spaCy
+        if self.catalog:
+            bike_texts = [
+                f"{bike['name']} {bike['type']} {bike['frame_material']} {bike['gears']} {bike['brakes']} {' '.join(bike.get('intended_use', []))} €{bike['price_eur']}"
+                for bike in self.catalog
+            ]
+            self.bike_vectors = np.array([self.nlp(text).vector for text in bike_texts])
         # Load FAQ
         if self.faq_path.exists():
             with open(self.faq_path, 'r', encoding='utf-8') as f:
@@ -39,49 +54,14 @@ class DataService:
     
     def search_bikes(self, query: str, max_results: int = 5) -> List[Dict[str, Any]]:
         """
-        Search bikes using simple keyword matching.
-        
-        For a small catalog, this is faster and more reliable than vector search.
+        Search bikes using dot-product similarity of spaCy vectors.
         """
-        query_lower = query.lower()
-        scored_bikes = []
-        
-        for bike in self.catalog:
-            score = 0
-            
-            # Check type (mountain, road, city, e-bike)
-            if any(bike_type in query_lower for bike_type in ['mountain', 'road', 'city', 'e-bike', 'electric']):
-                if bike['type'].lower() in query_lower:
-                    score += 5
-            
-            # Check price mentions
-            if 'cheap' in query_lower or 'budget' in query_lower or 'affordable' in query_lower:
-                if bike['price_eur'] < 1000:
-                    score += 3
-            elif 'premium' in query_lower or 'high-end' in query_lower or 'expensive' in query_lower:
-                if bike['price_eur'] > 2000:
-                    score += 3
-            
-            # Check intended use
-            for use in bike.get('intended_use', []):
-                if use.lower() in query_lower:
-                    score += 4
-            
-            # Check other features
-            for key in ['frame_material', 'suspension', 'brakes', 'brand']:
-                if str(bike.get(key, '')).lower() in query_lower:
-                    score += 2
-            
-            # General keyword search in name
-            if any(word in bike['name'].lower() for word in query_lower.split()):
-                score += 3
-            
-            if score > 0:
-                scored_bikes.append((score, bike))
-        
-        # Sort by score and return top results
-        scored_bikes.sort(reverse=True, key=lambda x: x[0])
-        return [bike for _, bike in scored_bikes[:max_results]]
+        if not self.catalog or self.bike_vectors is None:
+            return []
+        query_vec = self.nlp(query).vector
+        scores = np.dot(self.bike_vectors, query_vec)
+        top_indices = np.argsort(scores)[::-1][:max_results]
+        return [self.catalog[i] for i in top_indices if scores[i] > 0.1]  # threshold to avoid irrelevant
     
     def get_all_bikes(self) -> List[Dict[str, Any]]:
         """Return all bikes - useful when query is general"""

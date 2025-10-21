@@ -205,7 +205,6 @@ crm_lead data in gitignore for gdpr policy
 
 average latency is 7 seconds (including tiem to write response, except first query). Can be done into 5 or less.
 
-
 Appointment scheduling feature
 
 
@@ -221,3 +220,8 @@ docker-compose up -d
 
 For GUI:
 source venv/bin/activate && streamlit run chat_ui.py --server.headless=true
+
+LoRA
+
+Dot Product over linear search
+save only latest 5 messages in the context
