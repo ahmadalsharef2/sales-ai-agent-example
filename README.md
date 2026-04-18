@@ -7,9 +7,25 @@
   <img src="https://img.shields.io/badge/RAG-FAISS%20%2B%20Embeddings-purple" alt="RAG">
   <img src="https://img.shields.io/badge/docker-ready-blue?logo=docker" alt="Docker">
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="License">
+  <img src="https://github.com/ahmadalsharef994/sales-ai-agent-example/actions/workflows/ci.yml/badge.svg" alt="CI">
 </p>
 
 A production-grade **conversational Sales AI Agent** for an online bike shop — built with FastAPI, RAG-powered product recommendations, CRM lead creation, and support for both OpenAI and local LLMs via Ollama.
+
+---
+
+## ⚡ Quick Start in 2 Minutes
+
+```bash
+git clone https://github.com/ahmadalsharef994/sales-ai-agent-example.git
+cd sales-ai-agent-example
+cp .env.example .env
+docker compose up --build
+# API docs → http://localhost:8000/docs
+# Chat UI  → streamlit run chat_ui.py
+```
+
+> **No API key?** Set `LLM_PROVIDER=ollama` in `.env` — Ollama is bundled in `docker-compose.yml` and runs locally for free.
 
 ---
 
