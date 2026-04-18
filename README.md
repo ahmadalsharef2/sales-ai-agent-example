@@ -1,126 +1,186 @@
-# CodeChallenge – Sales Agent for Online Bike Shop
+# Sales AI Agent
+
+<p align="center">
+  <img src="https://img.shields.io/badge/python-3.11+-blue?logo=python" alt="Python">
+  <img src="https://img.shields.io/badge/FastAPI-0.100+-green?logo=fastapi" alt="FastAPI">
+  <img src="https://img.shields.io/badge/LLM-Ollama%20%7C%20OpenAI-orange?logo=openai" alt="LLM">
+  <img src="https://img.shields.io/badge/RAG-FAISS%20%2B%20Embeddings-purple" alt="RAG">
+  <img src="https://img.shields.io/badge/docker-ready-blue?logo=docker" alt="Docker">
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="License">
+</p>
+
+A production-grade **conversational Sales AI Agent** for an online bike shop — built with FastAPI, RAG-powered product recommendations, CRM lead creation, and support for both OpenAI and local LLMs via Ollama.
 
 ---
 
-## 1. Introduction
+## ✨ What It Does
 
-The goal of this challenge is to design and implement a **ChatBot API** that acts as a **Sales AI Agent** for an online bike shop.
+The agent handles a complete sales workflow end-to-end:
 
-The Sales Agent should be able to:
-- Conduct customer consultations via an API (REST or WebSocket).
-- Recommend products from a given product catalog.
-- Detect customer interest and guide the conversation.
-- Collect customer details (name, email, phone number) when interest is confirmed.
-- Create a **Lead** in the internal CRM system.
-- Schedule an **Appointment** with a real sales (dummy) consultant. (OPTIONAL)
-
-This challenge focuses on **automation, data-driven logic, and AI techniques** to simulate a realistic sales workflow.
+1. **Consults** customers through a multi-turn chat API
+2. **Recommends** bikes using RAG over a product catalog (vector search with FAISS)
+3. **Answers FAQs** from an unstructured knowledge base
+4. **Detects purchase intent** and collects customer details
+5. **Creates CRM leads** automatically when interest is confirmed
 
 ---
 
-## 2. Focus of the Assignment
+## 🏗️ Architecture
 
-The implementation should emphasize:
-- **Automation** – Handle the sales flow with minimal manual intervention.
-- **Data** – Use the provided product catalog as the only source for recommendations.
-- **AI Best Practices** – Apply techniques like Prompt Engineering, Retrieval-Augmented Generation (RAG), and Vector Search.
-- **Scalability** – Package the solution for deployment (e.g., Docker).
-- **Flexibility** – Allow the option of using **local LLMs** in addition to APIs like OpenAI.
+```mermaid
+flowchart TD
+    User["🧑 Customer"] -->|"chat message"| API["FastAPI\n/chat endpoint"]
+    API --> LLM["LLM Router\n(OpenAI / Ollama)"]
+    LLM -->|"tool call: recommend_product"| RAG["RAG Engine"]
+    LLM -->|"tool call: answer_faq"| FAQ["FAQ Retriever"]
+    LLM -->|"tool call: create_lead"| CRM["CRM API\nPOST /leads"]
+
+    RAG --> VDB["FAISS\nVector Store"]
+    VDB -->|"top-k chunks"| RAG
+    FAQ --> VDB
+
+    subgraph "Data Sources"
+        PC["product_catalog.json"]
+        FT["faq.txt"]
+    end
+
+    PC -->|"ingest + embed"| VDB
+    FT -->|"ingest + embed"| VDB
+
+    CRM -->|"lead created"| Notify["📧 Lead Notification"]
+```
 
 ---
 
-## 3. Tasks
+## 🚀 Quick Start
 
-### Overview
+```bash
+git clone https://github.com/ahmadalsharef994/sales-ai-agent-example.git
+cd sales-ai-agent-example
 
-1. **Conversation API**  
-   *As a customer, I want to interact with the Sales Agent through an API so that I can receive fluent and natural responses to my questions.*
+cp .env.example .env
+# Set OPENAI_API_KEY or configure Ollama URL
 
+docker-compose up --build
+```
 
-2. **Product Recommendation**  
-   *As a customer, I want the agent to recommend bikes from the catalog based on my preferences (type, price, usage) so that I can find a suitable product.*
+API is available at `http://localhost:8000`
+Swagger docs at `http://localhost:8000/docs`
 
+### Without Docker
 
-3. **Lead Creation**  
-   *As a sales organization, I want the agent to collect customer details (name, email, phone number) once interest is confirmed, so that a lead can be created in our CRM system.*
+```bash
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
 
+---
 
-4. **Appointment Scheduling**  (OUT_OF_SCOPE)
-   *As a customer, I want the agent to book an appointment with a real sales consultant so that I can discuss my needs in more detail.*
+## 💬 API Usage
 
+### Send a chat message
 
-5. **FAQ**  
-   *As a customer, I want the agent to also answer general questions (e.g., delivery, warranty, services) from an FAQ knowledge base, so that I get a complete consultation experience.*
+```bash
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "user-123",
+    "message": "I am looking for a mountain bike under 1500 euros"
+  }'
+```
 
-
-
-### 3.1 Conversation API
-- Expose the Sales Agent as an API (REST or WebSocket).
-- Accept customer messages and return agent responses.
-- Maintain a simple **multi-turn conversation** (context awareness).
-
-### 3.2 Product Recommendations
-- Use the provided product catalog [bikes](data/product_catalog.json)
-- Provide recommendations based on the customer's message.
-
-### 3.3 Lead Generation
-- When customer interest is confirmed, the agent must collect:
-
-    - Customer name
-    - Email address
-    - Phone number
-
-- Using this information, the agent creates a Lead in the CRM system via a API ```POST /ctream-crm/api/v1/leads```
-
-**Request Payload**
+**Response:**
 ```json
 {
-  "name": "John Doe",
-  "email": "john@example.com",
-  "phone": "+491234567"
+  "reply": "Great choice! Based on your budget, I recommend the TrailBlazer X3 (€1,299) — full suspension, 29\" wheels, perfect for trail riding. Would you like more details or compare it with other options?",
+  "intent": "product_interest",
+  "recommended_products": ["TrailBlazer X3", "Summit Pro 29"]
 }
 ```
 
-### 3.4 Appointment Scheduling (OUT_OF_SCOPE)
-- After lead creation, and the user confirms for an appointment, the agent should create an appointment.
-- Appointment must be created via following API ``POST /ctream-crm/api/v1/appointments``
+### Lead is auto-created when intent is confirmed
 
-**Request**
+```bash
+curl -X POST http://localhost:8000/chat \
+  -d '{"session_id": "user-123", "message": "Yes, I want to buy it. My name is John, email john@example.com"}'
+```
+
 ```json
 {
-  "conversation_id": "XXX",
-  "customer_id": "XXX"
+  "reply": "Perfect! I've registered your details and a sales consultant will reach out shortly.",
+  "lead_created": true,
+  "lead_id": "lead-abc123"
 }
 ```
 
-### 3.5 FAQ
-- In addition to the product catalog, the agent must also use unstructured text data from: [faq.txt](data/faq.txt)
+---
+
+## 🧠 AI Techniques Used
+
+| Technique | Implementation |
+|---|---|
+| **RAG** | Product catalog + FAQ chunked, embedded, stored in FAISS |
+| **Vector Search** | FAISS cosine similarity for top-k retrieval |
+| **Prompt Engineering** | System prompt with role, tone, constraints, and tool definitions |
+| **Tool Calling** | LLM decides when to call `recommend_product`, `answer_faq`, `create_lead` |
+| **Multi-turn Context** | Conversation history passed in each request |
+| **Intent Detection** | Detected from LLM output to trigger lead creation |
 
 ---
 
-## 4. Requirements & Evaluation
+## ⚙️ Configuration
 
-- **Language**: Python
-- **API**: REST or WebSocket
-- **Data**: Use only `/data/product_catalog.json`
-- **AI**:
-    - Visible **prompt engineering**
-    - Apply **RAG** for product recommendations
-    - Use **vector search** (e.g., FAISS, Qdrant, Pinecone)
-    - OpenAI, HuggingFace or local LLMs allowed
+```env
+# LLM Provider (choose one)
+OPENAI_API_KEY=sk-...
+OLLAMA_URL=http://localhost:11434   # for local LLMs
 
-**Evaluation Criteria**:
-- Clean API design and error handling
-- Correct use of RAG and vector DB
-- Demonstrated prompt engineering
-- Deployable with Docker
-- Flexible (API or local LLM)
-- Natural and fluent conversation flow
-- Code quality and maintainability
+# CRM
+CRM_API_URL=http://your-crm/api/v1
+CRM_API_KEY=...
+
+# App
+PORT=8000
+LOG_LEVEL=info
+```
 
 ---
 
-## 5. Time Limit
+## 📁 Project Structure
 
-⏱️ You have **5 hours** to complete this challenge.  
-Focus on the **core functionality and best practices** first – bonus features are optional.
+```
+├── app/
+│   ├── main.py              # FastAPI app + routes
+│   ├── agent.py             # LLM agent logic + tool orchestration
+│   ├── rag.py               # RAG pipeline (ingest, embed, retrieve)
+│   ├── tools/
+│   │   ├── recommend.py     # Product recommendation tool
+│   │   ├── faq.py           # FAQ answering tool
+│   │   └── lead.py          # CRM lead creation tool
+│   └── models.py            # Pydantic schemas
+├── data/
+│   ├── product_catalog.json
+│   └── faq.txt
+├── tests/
+├── docker-compose.yml
+└── requirements.txt
+```
+
+---
+
+## 🧪 Testing
+
+```bash
+pytest tests/ -v
+```
+
+---
+
+## 🤝 Contributing
+
+PRs welcome. Please open an issue first for major changes.
+
+## 📄 License
+
+MIT
