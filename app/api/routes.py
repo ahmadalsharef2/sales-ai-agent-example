@@ -1,6 +1,6 @@
 """API Routes - REST endpoints for the Sales AI Agent"""
 import logging
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, File, UploadFile, Form
 
 from app.models.schemas import (
     ChatRequest,
@@ -115,3 +115,59 @@ async def create_appointment(appointment_request: AppointmentRequest):
             detail="Error creating appointment"
         )
 
+# I want endpoint for speech to text
+from faster_whisper import WhisperModel
+from TTS.api import TTS
+import tempfile
+import os
+import torch
+from fastapi.responses import StreamingResponse
+
+# Load Whisper model (faster-whisper)
+whisper_model = WhisperModel("base", device="cuda" if torch.cuda.is_available() else "cpu", compute_type="int8")
+# Load Coqui TTS model
+coqui_tts = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC", progress_bar=False, gpu=torch.cuda.is_available())
+
+@router.post("/speech-to-text")
+async def speech_to_text(file: UploadFile = File(...)):
+    """
+    Convert speech audio data to text.
+    
+    This is a mock endpoint for speech-to-text conversion.
+    """
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+            tmp.write(await file.read())
+            tmp_path = tmp.name
+        segments, info = whisper_model.transcribe(tmp_path)
+        transcript = " ".join([seg.text for seg in segments])
+        os.remove(tmp_path)
+        return {"transcription": transcript}
+    except Exception as e:
+        logger.error(f"Speech-to-text error: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error converting speech to text"
+        )
+
+@router.post("/text-to-speech")
+async def text_to_speech(text: str = Form(...)):
+    """
+    Convert text to speech audio data.
+    
+    This is a mock endpoint for text-to-speech conversion.
+    """
+    try:
+        wav = coqui_tts.tts(text)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+            coqui_tts.save_wav(wav, tmp.name)
+            tmp.seek(0)
+            audio_bytes = tmp.read()
+        os.remove(tmp.name)
+        return StreamingResponse(iter([audio_bytes]), media_type="audio/wav")
+    except Exception as e:
+        logger.error(f"Text-to-speech error: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error converting text to speech"
+        )
